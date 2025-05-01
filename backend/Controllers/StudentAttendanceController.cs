@@ -33,20 +33,45 @@ namespace Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<StudentAttendance>> CreateAttendance(StudentAttendance attendance)
         {
+            attendance.Date = DateTime.SpecifyKind(attendance.Date, DateTimeKind.Utc);
+
             _context.StudentAttendances.Add(attendance);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAttendance(int id, StudentAttendance attendance)
-        {
-            if (id != attendance.Id) return BadRequest();
+public async Task<IActionResult> UpdateAttendance(int id, StudentAttendance attendance)
+{
+    if (id != attendance.Id) return BadRequest();
 
-            _context.Entry(attendance).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
+    // Convert relevant DateTime properties to UTC
+    if (attendance.Date.Kind != DateTimeKind.Utc)
+    {
+        attendance.Date = DateTime.SpecifyKind(attendance.Date, DateTimeKind.Utc);
+    }
+
+    _context.Entry(attendance).State = EntityState.Modified;
+
+    try
+    {
+        await _context.SaveChangesAsync();
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        if (!_context.StudentAttendances.Any(e => e.Id == id))
+        {
+            return NotFound();
         }
+        else
+        {
+            throw;
+        }
+    }
+
+    return NoContent();
+}
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAttendance(int id)
